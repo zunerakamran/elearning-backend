@@ -116,18 +116,50 @@ class QuizAttemptController extends Controller
         return response()->json($attempts);
     }
 
-    // Get the latest attempt for a quiz (single attempt)
+    // Get the current student's attempt for a quiz
     public function myAttempt(Request $request, Quiz $quiz)
     {
         $attempt = QuizAttempt::where('user_id', $request->user()->id)
-                              ->where('quiz_id', $quiz->id)
-                              ->latest()
-                              ->first();
+            ->where('quiz_id', $quiz->id)
+            ->first();
 
         if (!$attempt) {
-            return response()->json(['message' => 'No attempt found'], 404);
+            return response()->json(['message' => 'No attempt found.'], 404);
         }
 
-        return response()->json($attempt);
+        // Compute correct count from stored answers
+        $correctCount = collect($attempt->answers)->filter(fn($a) => $a['is_correct'])->count();
+        $totalCount = collect($attempt->answers)->count();
+
+        return response()->json([
+            'score' => $attempt->score,
+            'passed' => $attempt->passed,
+            'passing_score' => $quiz->passing_score,
+            'correct' => $correctCount,
+            'total' => $totalCount,
+            'details' => $attempt->answers,
+            'attempt_id' => $attempt->id,
+        ]);
+   }
+   // Get quiz with correct answers revealed (for results page only)
+public function showWithAnswers(Lesson $lesson)
+{
+    $quiz = $lesson->quiz()->with(['questions.answers'])->first();
+
+    if (!$quiz) {
+        return response()->json(['message' => 'No quiz found.'], 404);
     }
+
+    // Only students who have attempted can see correct answers
+    $attempted = QuizAttempt::where('user_id', auth()->id())
+                            ->where('quiz_id', $quiz->id)
+                            ->exists();
+
+    if (!$attempted && auth()->user()->role !== 'instructor') {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    // Return quiz WITH is_correct included
+    return response()->json($quiz);
+}
 }

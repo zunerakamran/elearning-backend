@@ -28,6 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/quizzes/{quiz}/submit', [QuizAttemptController::class, 'submit']);
     Route::get('/quizzes/{quiz}/my-attempts', [QuizAttemptController::class, 'myAttempts']);
     Route::get('/quizzes/{quiz}/my-attempt', [QuizAttemptController::class, 'myAttempt']);
+
+    Route::get('/lessons/{lesson}/quiz-results', [QuizController::class, 'showWithAnswers']);
 });
 
 use App\Http\Controllers\CourseController;
