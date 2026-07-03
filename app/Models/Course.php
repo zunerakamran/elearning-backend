@@ -43,4 +43,14 @@ class Course extends Model
             ->withTimestamps()
             ->withPivot('enrolled_at');
     }
+
+    public function announcements()
+    {
+        return $this->hasMany(Announcement::class)->latest();
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class)->latest();
+    }
 }

@@ -32,4 +32,9 @@ class Lesson extends Model
     {
         return $this->hasOne(Quiz::class);
     }
+
+    public function files()
+    {
+        return $this->hasMany(LessonFile::class);
+    }
 }

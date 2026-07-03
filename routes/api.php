@@ -6,11 +6,19 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\AssignmentSubmissionController;
+use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\CourseController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-
-use App\Http\Controllers\ProgressController;
+// Public
+Route::get('/courses/{course}/announcements', [AnnouncementController::class, 'index']);
+Route::get('/courses/{course}/assignments', [AssignmentController::class, 'index']);
+Route::get('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'show']);
+Route::get('/assignments/{assignment}/file', [AssignmentController::class, 'downloadFile']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -30,9 +38,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/quizzes/{quiz}/my-attempt', [QuizAttemptController::class, 'myAttempt']);
 
     Route::get('/lessons/{lesson}/quiz-results', [QuizController::class, 'showWithAnswers']);
-});
 
-use App\Http\Controllers\CourseController;
+    Route::post('/assignments/{assignment}/submit', [AssignmentSubmissionController::class, 'submit']);
+    Route::get('/assignments/{assignment}/my-submission', [AssignmentSubmissionController::class, 'mySubmission']);
+    Route::get('/courses/{course}/assignments/{assignment}/submission', [AssignmentSubmissionController::class, 'submission']);
+    Route::get('/submissions/{submission}/file', [AssignmentSubmissionController::class, 'downloadFile']);
+});
 
 // Public course routes
 Route::get('/courses', [CourseController::class, 'index']);
@@ -49,6 +60,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/courses/{course}', [CourseController::class, 'update']);
         Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
         Route::post('/lessons/{lesson}/quiz', [QuizController::class, 'store']);
+
+        // Announcements
+        Route::post('/courses/{course}/announcements', [AnnouncementController::class, 'store']);
+        Route::put('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'update']);
+        Route::delete('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
+
+        // Assignments
+        Route::post('/courses/{course}/assignments', [AssignmentController::class, 'store']);
+        Route::put('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update']);
+        Route::delete('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'destroy']);
+
+        // Grading
+        Route::get('/assignments/{assignment}/submissions', [AssignmentSubmissionController::class, 'index']);
+        Route::post('/assignments/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade']);
+        Route::put('/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'updateGrade']);
+
     });
 });
 
@@ -58,6 +85,10 @@ use App\Http\Controllers\LessonController;
 // Public
 Route::get('/courses/{course}/modules', [ModuleController::class, 'index']);
 Route::get('/modules/{module}/lessons/{lesson}', [LessonController::class, 'show']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/lessons/{lesson}/files/{lessonFile}', [LessonController::class, 'downloadFile']);
+});
 
 // Instructor only
 Route::middleware(['auth:sanctum', 'instructor'])->group(function () {
