@@ -117,7 +117,21 @@ class QuizController extends Controller
         $attempts = QuizAttempt::where('quiz_id', $quiz->id)
             ->with('user:id,name,email')
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($attempt) {
+                return [
+                    'id' => $attempt->id,
+                    'quiz_id' => $attempt->quiz_id,
+                    'user' => [
+                        'id' => $attempt->user->id,
+                        'name' => $attempt->user->name,
+                        'email' => $attempt->user->email,
+                    ],
+                    'score' => $attempt->score,
+                    'passed' => $attempt->passed,
+                    'created_at' => $attempt->created_at ? $attempt->created_at->format('Y-m-d\TH:i:s\Z') : null,
+                ];
+            });
 
         return response()->json($attempts);
     }

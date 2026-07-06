@@ -1,116 +1,121 @@
 <?php
 
 use App\Http\Controllers\AuthController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CourseController;
+use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\LessonController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\QuizAttemptController;
 use App\Http\Controllers\EnrollmentController;
+use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\AssignmentSubmissionController;
-use App\Http\Controllers\ProgressController;
-use App\Http\Controllers\CourseController;
+use App\Http\Controllers\ReportController;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CertificateController;
+
+// ── Public routes ─────────────────────────────────────────────────────────────
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-// Public
+
+Route::get('/courses', [CourseController::class, 'index']);
+Route::get('/courses/{course}', [CourseController::class, 'show']);
+Route::get('/courses/{course}/modules', [ModuleController::class, 'index']);
+Route::get('/modules/{module}/lessons/{lesson}', [LessonController::class, 'show']);
 Route::get('/courses/{course}/announcements', [AnnouncementController::class, 'index']);
 Route::get('/courses/{course}/assignments', [AssignmentController::class, 'index']);
 Route::get('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'show']);
-Route::get('/assignments/{assignment}/file', [AssignmentController::class, 'downloadFile']);
+Route::get('/certificates/{certificateNumber}/verify', [CertificateController::class, 'verify']);
+
+// ── Authenticated routes (any logged-in user) ─────────────────────────────────
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-    // Quiz viewing (authenticated to check instructor status)
-    Route::get('/lessons/{lesson}/quiz', [QuizController::class, 'show']);
-
-    // Progress tracking
-    Route::post('/lessons/{lesson}/complete', [ProgressController::class, 'markComplete']);
-    Route::delete('/lessons/{lesson}/complete', [ProgressController::class, 'markIncomplete']);
+    // Courses
+    Route::get('/my-enrolled-courses', [EnrollmentController::class, 'myCourses']);
+    Route::post('/courses/{course}/enroll', [EnrollmentController::class, 'enroll']);
+    Route::delete('/courses/{course}/unenroll', [EnrollmentController::class, 'unenroll']);
+    Route::get('/courses/{course}/enrollment-status', [EnrollmentController::class, 'status']);
     Route::get('/courses/{course}/progress', [ProgressController::class, 'courseProgress']);
 
+    // Lessons
+    Route::post('/lessons/{lesson}/complete', [ProgressController::class, 'markComplete']);
+    Route::delete('/lessons/{lesson}/complete', [ProgressController::class, 'markIncomplete']);
 
+    // Quizzes
+    Route::get('/lessons/{lesson}/quiz', [QuizController::class, 'show']);
+    Route::get('/lessons/{lesson}/quiz-results', [QuizAttemptController::class, 'showWithAnswers']);
     Route::post('/quizzes/{quiz}/submit', [QuizAttemptController::class, 'submit']);
-    Route::get('/quizzes/{quiz}/my-attempts', [QuizAttemptController::class, 'myAttempts']);
     Route::get('/quizzes/{quiz}/my-attempt', [QuizAttemptController::class, 'myAttempt']);
+    Route::get('/quizzes/{quiz}/my-attempts', [QuizAttemptController::class, 'myAttempts']);
 
-    Route::get('/lessons/{lesson}/quiz-results', [QuizController::class, 'showWithAnswers']);
-
+    // Assignments
     Route::post('/assignments/{assignment}/submit', [AssignmentSubmissionController::class, 'submit']);
     Route::get('/assignments/{assignment}/my-submission', [AssignmentSubmissionController::class, 'mySubmission']);
-    Route::get('/courses/{course}/assignments/{assignment}/submission', [AssignmentSubmissionController::class, 'submission']);
+
+    // Files
+    Route::get('/assignments/{assignment}/file', [AssignmentController::class, 'downloadFile']);
     Route::get('/submissions/{submission}/file', [AssignmentSubmissionController::class, 'downloadFile']);
-});
-
-// Public course routes
-Route::get('/courses', [CourseController::class, 'index']);
-Route::get('/courses/{course}', [CourseController::class, 'show']);
-
-// Protected course routes (instructor only)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
-
-    // Instructor only
-    Route::middleware('instructor')->group(function () {
-        Route::post('/courses', [CourseController::class, 'store']);
-        Route::put('/courses/{course}', [CourseController::class, 'update']);
-        Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
-        Route::post('/lessons/{lesson}/quiz', [QuizController::class, 'store']);
-
-        // Announcements
-        Route::post('/courses/{course}/announcements', [AnnouncementController::class, 'store']);
-        Route::put('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'update']);
-        Route::delete('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
-
-        // Assignments
-        Route::post('/courses/{course}/assignments', [AssignmentController::class, 'store']);
-        Route::put('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update']);
-        Route::delete('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'destroy']);
-
-        // Grading
-        Route::get('/assignments/{assignment}/submissions', [AssignmentSubmissionController::class, 'index']);
-        Route::post('/assignments/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade']);
-        Route::put('/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'updateGrade']);
-
-    });
-});
-
-use App\Http\Controllers\ModuleController;
-use App\Http\Controllers\LessonController;
-
-// Public
-Route::get('/courses/{course}/modules', [ModuleController::class, 'index']);
-Route::get('/modules/{module}/lessons/{lesson}', [LessonController::class, 'show']);
-
-Route::middleware('auth:sanctum')->group(function () {
     Route::get('/lessons/{lesson}/files/{lessonFile}', [LessonController::class, 'downloadFile']);
+
+    //Certificates
+    Route::get('/my-certificates', [CertificateController::class, 'myCertificates']);
+
+    // Module (single fetch for LessonViewer)
+    Route::get('/modules/{module}', function (\App\Models\Module $module) {
+        return response()->json($module);
+    });
+
 });
 
-// Instructor only
+// ── Instructor only routes ────────────────────────────────────────────────────
+
 Route::middleware(['auth:sanctum', 'instructor'])->group(function () {
+
+    // Courses
+    Route::post('/courses', [CourseController::class, 'store']);
+    Route::put('/courses/{course}', [CourseController::class, 'update']);
+    Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
+    Route::get('/my-courses', [CourseController::class, 'myCourses']);
+
+    // Modules
     Route::post('/courses/{course}/modules', [ModuleController::class, 'store']);
     Route::put('/courses/{course}/modules/{module}', [ModuleController::class, 'update']);
     Route::delete('/courses/{course}/modules/{module}', [ModuleController::class, 'destroy']);
 
+    // Lessons
     Route::post('/modules/{module}/lessons', [LessonController::class, 'store']);
     Route::put('/modules/{module}/lessons/{lesson}', [LessonController::class, 'update']);
     Route::delete('/modules/{module}/lessons/{lesson}', [LessonController::class, 'destroy']);
 
-    Route::get('/my-courses', [CourseController::class, 'myCourses']);
-    Route::get('/courses/{course}/students', [EnrollmentController::class, 'enrolledStudents']);
+    // Quizzes
+    Route::post('/lessons/{lesson}/quiz', [QuizController::class, 'store']);
     Route::get('/quizzes/{quiz}/attempts', [QuizController::class, 'allAttempts']);
-});
 
-Route::middleware('auth:sanctum')->group(function () {
-    // ... existing auth routes ...
+    // Announcements
+    Route::post('/courses/{course}/announcements', [AnnouncementController::class, 'store']);
+    Route::put('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'update']);
+    Route::delete('/courses/{course}/announcements/{announcement}', [AnnouncementController::class, 'destroy']);
 
-    // Enrollment
-    Route::post('/courses/{course}/enroll', [EnrollmentController::class, 'enroll']);
-    Route::delete('/courses/{course}/unenroll', [EnrollmentController::class, 'unenroll']);
-    Route::get('/courses/{course}/enrollment-status', [EnrollmentController::class, 'status']);
-    Route::get('/my-enrolled-courses', [EnrollmentController::class, 'myCourses']);
+    // Assignments
+    Route::post('/courses/{course}/assignments', [AssignmentController::class, 'store']);
+    Route::put('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'update']);
+    Route::delete('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'destroy']);
+    Route::get('/assignments/{assignment}/submissions', [AssignmentSubmissionController::class, 'index']);
+    Route::post('/assignments/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade']);
+
+    // Students & Reports
+    Route::get('/courses/{course}/students', [EnrollmentController::class, 'enrolledStudents']);
+    Route::get('/courses/{course}/report', [ReportController::class, 'courseReport']);
+
+    //Certificates
+    Route::post('/courses/{course}/certificates', [CertificateController::class, 'issue']);
+    Route::delete('/courses/{course}/certificates/{certificate}', [CertificateController::class, 'revoke']);
+    Route::get('/courses/{course}/certificates', [CertificateController::class, 'coursesCertificates']);
 });
