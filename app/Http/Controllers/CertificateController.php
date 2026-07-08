@@ -77,7 +77,10 @@ class CertificateController extends Controller
         }
 
         $certificates = Certificate::where('course_id', $course->id)
-            ->with(['student:id,name,email', 'issuedBy:id,name'])
+            ->with([
+                'student:id,name,email',
+                'issuedBy:id,name',  
+            ])
             ->latest()
             ->get();
 
@@ -88,7 +91,11 @@ class CertificateController extends Controller
     public function myCertificates(Request $request)
     {
         $certificates = Certificate::where('student_id', $request->user()->id)
-            ->with(['course:id,title,level', 'issuedBy:id,name'])
+            ->with([
+                'course:id,title,level',
+                'issuedBy:id,name', 
+                'student:id,name',
+            ])
             ->latest()
             ->get();
 

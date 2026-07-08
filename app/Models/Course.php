@@ -53,4 +53,9 @@ class Course extends Model
     {
         return $this->hasMany(Assignment::class)->latest();
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
 }

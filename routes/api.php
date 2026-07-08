@@ -14,6 +14,7 @@ use App\Http\Controllers\AssignmentSubmissionController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\ReviewController;
 
 // ── Public routes ─────────────────────────────────────────────────────────────
 
@@ -28,6 +29,8 @@ Route::get('/courses/{course}/announcements', [AnnouncementController::class, 'i
 Route::get('/courses/{course}/assignments', [AssignmentController::class, 'index']);
 Route::get('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'show']);
 Route::get('/certificates/{certificateNumber}/verify', [CertificateController::class, 'verify']);
+Route::get('/courses/{course}/reviews', [ReviewController::class, 'index']);
+
 
 // ── Authenticated routes (any logged-in user) ─────────────────────────────────
 
@@ -71,6 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/modules/{module}', function (\App\Models\Module $module) {
         return response()->json($module);
     });
+
+    //Reviews
+    Route::post('/courses/{course}/reviews', [ReviewController::class, 'store']);
+    Route::delete('/courses/{course}/reviews', [ReviewController::class, 'destroy']);
+    Route::get('/courses/{course}/my-review', [ReviewController::class, 'myReview']);
 
 });
 
