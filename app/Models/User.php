@@ -24,7 +24,25 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'profile_picture',
+        'bio',
     ];
+
+    /**
+     * The attributes that should be appended to model arrays.
+     */
+    protected $appends = ['profile_picture_url'];
+
+    /**
+     * Get the full URL for the profile picture.
+     */
+    public function getProfilePictureUrlAttribute(): ?string
+    {
+        if ($this->profile_picture) {
+            return url('storage/' . $this->profile_picture);
+        }
+        return null;
+    }
 
     /**
      * The attributes that should be hidden for serialization.

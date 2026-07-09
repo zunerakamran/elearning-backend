@@ -63,6 +63,34 @@ class AssignmentSubmissionController extends Controller
             ]
         );
 
+        // Email course instructor
+        $course = $assignment->course;
+        $instructor = $course->instructor;
+
+        if ($instructor) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/courses/' . $course->id . '/assignments/' . $assignment->id;
+            $submittedAtFormatted = $submission->submitted_at ? \Carbon\Carbon::parse($submission->submitted_at)->format('F j, Y, g:i a') : now()->format('F j, Y, g:i a');
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                    new \App\Mail\AssignmentSubmittedMail(
+                        $instructor->name,
+                        $course->title,
+                        $assignment->title,
+                        $user->name,
+                        $user->email,
+                        $submittedAtFormatted,
+                        $submission->note,
+                        $submission->file_name,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending assignment submission email to instructor: " . $instructor->email . ". Error: " . $e->getMessage());
+            }
+        }
+
         return response()->json($submission, 201);
     }
 

@@ -6,6 +6,9 @@ use App\Models\Course;
 use App\Models\Review;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReviewCreatedMail;
 
 class ReviewController extends Controller
 {
@@ -75,6 +78,28 @@ class ReviewController extends Controller
                 'comment' => $validated['comment'],
             ]
         );
+
+        // Notify the instructor about the new/updated review
+        $instructor = $course->instructor;
+        if ($instructor) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/instructor/courses/' . $course->id . '/reviews';
+
+            try {
+                Mail::to($instructor->email)->send(
+                    new ReviewCreatedMail(
+                        $instructor->name,
+                        $course->title,
+                        $user->name,
+                        $validated['rating'],
+                        $validated['comment'] ?? null,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                Log::error('Failed sending review notification to instructor: ' . $instructor->email . '. Error: ' . $e->getMessage());
+            }
+        }
 
         return response()->json(
             $review->load('student:id,name'),

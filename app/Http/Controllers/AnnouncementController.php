@@ -37,6 +37,30 @@ class AnnouncementController extends Controller
             'body' => $validated['body'],
         ]);
 
+        // Email all enrolled students
+        $students = $course->students;
+        $instructorName = $request->user()->name;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/courses/' . $course->id;
+
+        foreach ($students as $student) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                    new \App\Mail\AnnouncementCreatedMail(
+                        $student->name,
+                        $course->title,
+                        $announcement->title,
+                        $announcement->body,
+                        $instructorName,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                // Log exception but don't crash response
+                \Illuminate\Support\Facades\Log::error("Failed sending announcement email to student: " . $student->email . ". Error: " . $e->getMessage());
+            }
+        }
+
         return response()->json($announcement->load('instructor:id,name'), 201);
     }
 

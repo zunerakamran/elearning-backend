@@ -102,6 +102,27 @@ class QuizController extends Controller
             }
         }
 
+        // Email all enrolled students
+        $students = $course->students;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/lessons/' . $lesson->id . '/quiz';
+
+        foreach ($students as $student) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                    new \App\Mail\QuizCreatedMail(
+                        $student->name,
+                        $course->title,
+                        $quiz->title,
+                        $quiz->passing_score,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending quiz email to student: " . $student->email . ". Error: " . $e->getMessage());
+            }
+        }
+
         return response()->json($quiz->load('questions.answers'), 201);
     }
 

@@ -77,6 +77,30 @@ class AssignmentController extends Controller
             'file_name' => $fileName,
         ]);
 
+        // Email all enrolled students
+        $students = $course->students;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/courses/' . $course->id . '/assignments/' . $assignment->id;
+        $formattedDate = $assignment->due_date ? \Carbon\Carbon::parse($assignment->due_date)->format('F j, Y, g:i a') : null;
+
+        foreach ($students as $student) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                    new \App\Mail\AssignmentCreatedMail(
+                        $student->name,
+                        $course->title,
+                        $assignment->title,
+                        $assignment->instructions,
+                        $formattedDate,
+                        $assignment->total_marks,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending assignment email to student: " . $student->email . ". Error: " . $e->getMessage());
+            }
+        }
+
         return response()->json($assignment->load('instructor:id,name'), 201);
     }
 

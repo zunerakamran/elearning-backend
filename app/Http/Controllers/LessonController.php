@@ -57,6 +57,29 @@ class LessonController extends Controller
         }
 
         $lesson->load('files');
+
+        // Email all enrolled students
+        $students = $course->students;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/modules/' . $module->id . '/lessons/' . $lesson->id;
+
+        foreach ($students as $student) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                    new \App\Mail\LessonCreatedMail(
+                        $student->name,
+                        $course->title,
+                        $module->title,
+                        $lesson->title,
+                        $lesson->content_type,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending lesson email to student: " . $student->email . ". Error: " . $e->getMessage());
+            }
+        }
+
         return response()->json($lesson, 201);
     }
 

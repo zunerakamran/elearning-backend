@@ -73,7 +73,7 @@ class QuizAttemptController extends Controller
         }
 
         $score = $totalQuestions > 0
-            ? round(($correctCount / $totalQuestions) * 100)
+            ? (int) round(($correctCount / $totalQuestions) * 100)
             : 0;
 
         $passed = $score >= $quiz->passing_score;
@@ -92,6 +92,32 @@ class QuizAttemptController extends Controller
                 ['user_id' => $user->id, 'lesson_id' => $quiz->lesson_id],
                 ['completed' => true, 'completed_at' => now()]
             );
+        }
+
+        // Email course instructor
+        $course = $quiz->lesson->module->course;
+        $instructor = $course ? $course->instructor : null;
+
+        if ($instructor) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/courses/' . $course->id . '/report';
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                    new \App\Mail\QuizAttemptedMail(
+                        $instructor->name,
+                        $course->title,
+                        $quiz->title,
+                        $user->name,
+                        $user->email,
+                        $score,
+                        $passed,
+                        $actionUrl
+                    )
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending quiz attempt email to instructor: " . $instructor->email . ". Error: " . $e->getMessage());
+            }
         }
 
         return response()->json([

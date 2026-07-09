@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/profile', [AuthController::class, 'updateProfile']);
 
     // Courses
     Route::get('/my-enrolled-courses', [EnrollmentController::class, 'myCourses']);
