@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Announcement;
 use Illuminate\Http\Request;
+use App\Services\NotificationService;
 
 class AnnouncementController extends Controller
 {
@@ -36,6 +37,16 @@ class AnnouncementController extends Controller
             'title' => $validated['title'],
             'body' => $validated['body'],
         ]);
+
+        $enrolledStudentIds = $course->enrollments()->pluck('user_id');
+        foreach ($enrolledStudentIds as $studentId) {
+            NotificationService::newAnnouncement(
+                $studentId,
+                $request->user()->name,
+                $course->title,
+                $course->id
+            );
+        }
 
         // Email all enrolled students
         $students = $course->students;

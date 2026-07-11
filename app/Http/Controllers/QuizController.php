@@ -102,7 +102,7 @@ class QuizController extends Controller
             }
         }
 
-        // Email all enrolled students
+        // Email and notify all enrolled students
         $students = $course->students;
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
         $actionUrl = $frontendUrl . '/lessons/' . $lesson->id . '/quiz';
@@ -120,6 +120,18 @@ class QuizController extends Controller
                 );
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Failed sending quiz email to student: " . $student->email . ". Error: " . $e->getMessage());
+            }
+
+            // Create notification for student
+            try {
+                \App\Services\NotificationService::quizAdded(
+                    $student->id,
+                    $quiz->title,
+                    $course->title,
+                    $lesson->id
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed creating quiz notification for student: " . $student->id . ". Error: " . $e->getMessage());
             }
         }
 

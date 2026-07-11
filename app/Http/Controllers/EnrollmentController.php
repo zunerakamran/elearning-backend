@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
+use App\Services\NotificationService;
 
 class EnrollmentController extends Controller
 {
@@ -43,6 +44,22 @@ class EnrollmentController extends Controller
             'course_id' => $course->id,
             'enrolled_at' => now(),
         ]);
+
+        NotificationService::enrollmentConfirmed(
+            $user->id,
+            $course->title,
+            $course->id
+        );
+
+        // Notify the course instructor
+        if ($course->instructor_id) {
+            NotificationService::newEnrollment(
+                $course->instructor_id,
+                $user->name,
+                $course->title,
+                $course->id
+            );
+        }
 
         return response()->json([
             'message' => 'Enrolled successfully.',

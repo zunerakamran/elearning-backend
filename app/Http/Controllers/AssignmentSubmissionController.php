@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\NotificationService;
 
 class AssignmentSubmissionController extends Controller
 {
@@ -91,6 +92,17 @@ class AssignmentSubmissionController extends Controller
             }
         }
 
+        // Notify instructor via in-app notification
+        if ($instructor) {
+            NotificationService::assignmentSubmitted(
+                $instructor->id,
+                $user->name,
+                $assignment->title,
+                $course->id,
+                $assignment->id
+            );
+        }
+
         return response()->json($submission, 201);
     }
 
@@ -132,6 +144,14 @@ class AssignmentSubmissionController extends Controller
             'feedback' => $validated['feedback'],
             'status' => 'graded',
         ]);
+        $assignment = $submission->assignment()->with('course:id,title')->first();
+        NotificationService::assignmentGraded(
+            $submission->student_id,
+            $assignment->title,
+            $validated['marks'],
+            $assignment->total_marks,
+            $assignment->course_id
+        );
 
         return response()->json($submission->load('student:id,name,email'));
     }
@@ -213,6 +233,14 @@ class AssignmentSubmissionController extends Controller
             'feedback' => $validated['feedback'],
             'status' => 'graded',
         ]);
+
+        NotificationService::assignmentGraded(
+            $submission->student_id,
+            $submission->assignment->title,
+            $validated['marks'],
+            $submission->assignment->total_marks,
+            $submission->assignment->course_id
+        );
 
         return response()->json($submission->load('student:id,name,email'));
     }

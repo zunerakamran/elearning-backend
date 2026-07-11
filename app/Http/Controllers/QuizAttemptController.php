@@ -8,6 +8,7 @@ use App\Models\Answer;
 use App\Models\QuizAttempt;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
+use App\Services\NotificationService;
 
 class QuizAttemptController extends Controller
 {
@@ -118,7 +119,30 @@ class QuizAttemptController extends Controller
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Failed sending quiz attempt email to instructor: " . $instructor->email . ". Error: " . $e->getMessage());
             }
+
+            // Create notification for instructor
+            try {
+                NotificationService::quizAttempted(
+                    $instructor->id,
+                    $user->name,
+                    $quiz->title,
+                    $score,
+                    $passed,
+                    $course->id
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed creating quiz attempt notification for instructor: " . $instructor->id . ". Error: " . $e->getMessage());
+            }
         }
+
+        // Notify student of quiz result
+        NotificationService::quizCompleted(
+            $user->id,
+            $quiz->title,
+            $score,
+            $passed,
+            $quiz->lesson_id
+        );
 
         return response()->json([
             'score' => $score,

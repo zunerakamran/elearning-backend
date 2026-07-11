@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ReviewCreatedMail;
+use App\Services\NotificationService;
 
 class ReviewController extends Controller
 {
@@ -99,6 +100,17 @@ class ReviewController extends Controller
             } catch (\Exception $e) {
                 Log::error('Failed sending review notification to instructor: ' . $instructor->email . '. Error: ' . $e->getMessage());
             }
+        }
+
+        // Notify the instructor via in-app notification
+        if ($instructor) {
+            NotificationService::reviewPosted(
+                $instructor->id,
+                $user->name,
+                $course->title,
+                $validated['rating'],
+                $course->id
+            );
         }
 
         return response()->json(

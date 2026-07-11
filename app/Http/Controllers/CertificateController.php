@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Services\NotificationService;
 
 class CertificateController extends Controller
 {
@@ -51,6 +52,12 @@ class CertificateController extends Controller
             'certificate_number' => 'CERT-' . strtoupper(Str::random(8)) . '-' . date('Y'),
             'issued_at' => now(),
         ]);
+
+        NotificationService::certificateIssued(
+            $validated['student_id'],
+            $course->title,
+            $course->id
+        );
 
         return response()->json(
             $certificate->load(['student:id,name,email', 'course:id,title', 'issuedBy:id,name']),

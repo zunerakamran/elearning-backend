@@ -15,6 +15,8 @@ use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\NotificationController;
 
 // ── Public routes ─────────────────────────────────────────────────────────────
 
@@ -80,6 +82,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/courses/{course}/reviews', [ReviewController::class, 'store']);
     Route::delete('/courses/{course}/reviews', [ReviewController::class, 'destroy']);
     Route::get('/courses/{course}/my-review', [ReviewController::class, 'myReview']);
+
+    // Chat
+    Route::post('/courses/{course}/conversation', [ChatController::class, 'getOrCreateConversation']);
+    Route::get('/conversations', [ChatController::class, 'studentConversations']);
+    Route::get('/conversations/instructor', [ChatController::class, 'instructorConversations']);
+    Route::get('/conversations/{conversation}/messages', [ChatController::class, 'getMessages']);
+    Route::post('/conversations/{conversation}/messages', [ChatController::class, 'sendMessage']);
+    Route::get('/conversations/{conversation}/poll', [ChatController::class, 'pollMessages']);
+
+    //Notification
+    Route::post('/notifications', [NotificationController::class, 'store']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
 
 });
 

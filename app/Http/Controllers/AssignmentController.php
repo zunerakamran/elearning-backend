@@ -77,7 +77,7 @@ class AssignmentController extends Controller
             'file_name' => $fileName,
         ]);
 
-        // Email all enrolled students
+        // Email and notify all enrolled students
         $students = $course->students;
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
         $actionUrl = $frontendUrl . '/courses/' . $course->id . '/assignments/' . $assignment->id;
@@ -98,6 +98,19 @@ class AssignmentController extends Controller
                 );
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Failed sending assignment email to student: " . $student->email . ". Error: " . $e->getMessage());
+            }
+
+            // Create notification for student
+            try {
+                \App\Services\NotificationService::assignmentAdded(
+                    $student->id,
+                    $assignment->title,
+                    $course->title,
+                    $course->id,
+                    $assignment->id
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed creating assignment notification for student: " . $student->id . ". Error: " . $e->getMessage());
             }
         }
 

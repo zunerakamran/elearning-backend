@@ -7,6 +7,7 @@ use App\Models\Lesson;
 use App\Models\LessonFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Services\NotificationService;
 
 class LessonController extends Controller
 {
@@ -63,20 +64,33 @@ class LessonController extends Controller
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
         $actionUrl = $frontendUrl . '/modules/' . $module->id . '/lessons/' . $lesson->id;
 
-        foreach ($students as $student) {
-            try {
-                \Illuminate\Support\Facades\Mail::to($student->email)->send(
-                    new \App\Mail\LessonCreatedMail(
-                        $student->name,
-                        $course->title,
-                        $module->title,
-                        $lesson->title,
-                        $lesson->content_type,
-                        $actionUrl
-                    )
+        // Only notify students for non-quiz lessons.
+        // Quiz lessons send their own notification from QuizController when the quiz is actually published.
+        if ($validated['content_type'] !== 'quiz') {
+            foreach ($students as $student) {
+                // In-app notification
+                NotificationService::lessonAdded(
+                    $student->id,
+                    $lesson->title,
+                    $course->title,
+                    $module->id,
+                    $lesson->id
                 );
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Failed sending lesson email to student: " . $student->email . ". Error: " . $e->getMessage());
+
+                try {
+                    \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                        new \App\Mail\LessonCreatedMail(
+                            $student->name,
+                            $course->title,
+                            $module->title,
+                            $lesson->title,
+                            $lesson->content_type,
+                            $actionUrl
+                        )
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Failed sending lesson email to student: " . $student->email . ". Error: " . $e->getMessage());
+                }
             }
         }
 
