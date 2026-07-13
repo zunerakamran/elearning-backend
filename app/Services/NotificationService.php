@@ -72,7 +72,7 @@ class NotificationService
         self::send(
             $studentId,
             'enrollment',
-            'Enrollment confirmed ✅',
+            'Enrollment confirmed',
             "You are now enrolled in \"{$courseTitle}\"",
             "/courses/{$courseId}"
         );

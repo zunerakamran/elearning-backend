@@ -19,18 +19,126 @@ class AuthController extends Controller
             'role' => ['nullable', 'in:student,instructor'],
         ]);
 
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpExpires = now()->addMinutes(10);
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => $validated['role'] ?? 'student',
+            'otp' => $otp,
+            'otp_expires' => $otpExpires,
         ]);
 
+        // Send OTP email
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\OtpMail($user->name, $otp)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending OTP email: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'Registration successful. Please check your email for the verification code.',
+        ], 201);
+    }
+
+    public function registerInitiate(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8'],
+            'role' => ['nullable', 'in:student,instructor'],
+        ]);
+
+        // Check if email already exists
+        if (User::where('email', $validated['email'])->exists()) {
+            return response()->json([
+                'message' => 'Email already registered.',
+            ], 422);
+        }
+
+        // Generate 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpExpires = now()->addMinutes(10);
+
+        // Store registration data temporarily in cache
+        $cacheKey = 'registration_' . $validated['email'];
+        \Illuminate\Support\Facades\Cache::put($cacheKey, [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => $validated['role'] ?? 'student',
+            'otp' => $otp,
+            'otp_expires' => $otpExpires,
+        ], now()->addMinutes(15));
+
+        // Send OTP email
+        try {
+            \Illuminate\Support\Facades\Mail::to($validated['email'])->send(
+                new \App\Mail\OtpMail($validated['name'], $otp)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending OTP email: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'OTP sent to your email. Please verify to complete registration.',
+        ], 200);
+    }
+
+    public function registerComplete(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'otp' => ['required', 'string', 'size:6'],
+        ]);
+
+        $cacheKey = 'registration_' . $validated['email'];
+        $registrationData = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        if (!$registrationData) {
+            return response()->json([
+                'message' => 'Registration session expired or not found.',
+            ], 400);
+        }
+
+        // Check if OTP matches and is not expired
+        if ($registrationData['otp'] !== $validated['otp']) {
+            return response()->json([
+                'message' => 'Invalid OTP.',
+            ], 400);
+        }
+
+        if (now()->gt($registrationData['otp_expires'])) {
+            return response()->json([
+                'message' => 'OTP has expired.',
+            ], 400);
+        }
+
+        // Create the user
+        $user = User::create([
+            'name' => $registrationData['name'],
+            'email' => $registrationData['email'],
+            'password' => Hash::make($registrationData['password']),
+            'role' => $registrationData['role'],
+            'email_verified_at' => now(),
+        ]);
+
+        // Clear cache
+        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+
+        // Auto-login
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'user' => $user,
             'token' => $token,
+            'message' => 'Registration completed successfully.',
         ], 201);
     }
 
@@ -110,5 +218,211 @@ class AuthController extends Controller
         $user->update($validated);
 
         return response()->json($user->fresh());
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'otp' => ['required', 'string', 'size:6'],
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        if ($user->email_verified_at) {
+            return response()->json([
+                'message' => 'Email already verified.',
+            ], 400);
+        }
+
+        // Check if OTP matches and is not expired
+        if ($user->otp !== $validated['otp']) {
+            return response()->json([
+                'message' => 'Invalid OTP.',
+            ], 400);
+        }
+
+        if (now()->gt($user->otp_expires)) {
+            return response()->json([
+                'message' => 'OTP has expired.',
+            ], 400);
+        }
+
+        $user->update([
+            'email_verified_at' => now(),
+            'otp' => null,
+            'otp_expires' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Email verified successfully.',
+        ]);
+    }
+
+    public function resendOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        // Check if there's a pending registration in cache
+        $cacheKey = 'registration_' . $validated['email'];
+        $registrationData = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        if ($registrationData) {
+            // Resend OTP for pending registration
+            $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $otpExpires = now()->addMinutes(10);
+
+            \Illuminate\Support\Facades\Cache::put($cacheKey, [
+                'name' => $registrationData['name'],
+                'email' => $registrationData['email'],
+                'password' => $registrationData['password'],
+                'role' => $registrationData['role'],
+                'otp' => $otp,
+                'otp_expires' => $otpExpires,
+            ], now()->addMinutes(15));
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($validated['email'])->send(
+                    new \App\Mail\OtpMail($registrationData['name'], $otp)
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending OTP email: " . $e->getMessage());
+            }
+
+            return response()->json([
+                'message' => 'OTP sent successfully.',
+            ], 200);
+        }
+
+        // Check if user exists and is not verified
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        if ($user->email_verified_at) {
+            return response()->json([
+                'message' => 'Email already verified.',
+            ], 400);
+        }
+
+        // Generate new 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpExpires = now()->addMinutes(10);
+
+        $user->update([
+            'otp' => $otp,
+            'otp_expires' => $otpExpires,
+        ]);
+
+        // Send OTP email
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\OtpMail($user->name, $otp)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending OTP email: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'OTP sent successfully.',
+        ], 200);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'If an account exists with this email, a password reset code has been sent.',
+            ], 200);
+        }
+
+        // Generate new 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otpExpires = now()->addMinutes(10);
+
+        $user->update([
+            'otp' => $otp,
+            'otp_expires' => $otpExpires,
+        ]);
+
+        // Send OTP email
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\OtpMail($user->name, $otp)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending password reset OTP email: " . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'If an account exists with this email, a password reset code has been sent.',
+        ], 200);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'string', 'email'],
+            'otp' => ['required', 'string', 'size:6'],
+            'password' => ['required', 'string', 'min:8'],
+            'password_confirmation' => ['nullable', 'string', 'min:8'],
+        ]);
+
+        // Manual password confirmation check if provided
+        if (!empty($validated['password_confirmation']) && $validated['password'] !== $validated['password_confirmation']) {
+            return response()->json([
+                'message' => 'Password confirmation does not match.',
+            ], 422);
+        }
+
+        $user = User::where('email', $validated['email'])->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        // Check if OTP matches and is not expired
+        if ($user->otp !== $validated['otp']) {
+            return response()->json([
+                'message' => 'Invalid OTP.',
+            ], 400);
+        }
+
+        if (now()->gt($user->otp_expires)) {
+            return response()->json([
+                'message' => 'OTP has expired.',
+            ], 400);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($validated['password']),
+            'otp' => null,
+            'otp_expires' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'Password reset successfully.',
+        ]);
     }
 }

@@ -26,6 +26,9 @@ class User extends Authenticatable
         'role',
         'profile_picture',
         'bio',
+        'verification_token',
+        'otp',
+        'otp_expires',
     ];
 
     /**

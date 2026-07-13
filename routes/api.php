@@ -21,7 +21,13 @@ use App\Http\Controllers\NotificationController;
 // ── Public routes ─────────────────────────────────────────────────────────────
 
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register-initiate', [AuthController::class, 'registerInitiate']);
+Route::post('/register-complete', [AuthController::class, 'registerComplete']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/courses/{course}', [CourseController::class, 'show']);

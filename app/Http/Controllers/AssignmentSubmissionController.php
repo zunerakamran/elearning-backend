@@ -92,17 +92,6 @@ class AssignmentSubmissionController extends Controller
             }
         }
 
-        // Notify instructor via in-app notification
-        if ($instructor) {
-            NotificationService::assignmentSubmitted(
-                $instructor->id,
-                $user->name,
-                $assignment->title,
-                $course->id,
-                $assignment->id
-            );
-        }
-
         return response()->json($submission, 201);
     }
 

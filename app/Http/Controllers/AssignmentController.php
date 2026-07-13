@@ -99,19 +99,6 @@ class AssignmentController extends Controller
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("Failed sending assignment email to student: " . $student->email . ". Error: " . $e->getMessage());
             }
-
-            // Create notification for student
-            try {
-                \App\Services\NotificationService::assignmentAdded(
-                    $student->id,
-                    $assignment->title,
-                    $course->title,
-                    $course->id,
-                    $assignment->id
-                );
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Failed creating assignment notification for student: " . $student->id . ". Error: " . $e->getMessage());
-            }
         }
 
         return response()->json($assignment->load('instructor:id,name'), 201);
