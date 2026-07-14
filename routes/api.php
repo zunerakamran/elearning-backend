@@ -17,6 +17,7 @@ use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\DiscussionController;
 
 // ── Public routes ─────────────────────────────────────────────────────────────
 
@@ -104,6 +105,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
+
+    // Discussions
+    Route::get('/courses/{course}/discussions', [DiscussionController::class, 'index']);
+    Route::post('/courses/{course}/discussions', [DiscussionController::class, 'storeQuestion']);
+    Route::get('/discussions/{question}', [DiscussionController::class, 'showQuestion']);
+    Route::delete('/discussions/{question}', [DiscussionController::class, 'destroyQuestion']);
+    Route::post('/discussions/{question}/replies', [DiscussionController::class, 'storeReply']);
+    Route::delete('/discussions/replies/{reply}', [DiscussionController::class, 'destroyReply']);
+    Route::post('/discussions/replies/{reply}/like', [DiscussionController::class, 'toggleLike']);
+    Route::post('/discussions/replies/{reply}/pin', [DiscussionController::class, 'togglePin']);
+    Route::post('/discussions/replies/{reply}/accept', [DiscussionController::class, 'toggleAccept']);
 
 });
 

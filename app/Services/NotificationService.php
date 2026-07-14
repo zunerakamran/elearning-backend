@@ -167,4 +167,59 @@ class NotificationService
             "/courses/{$courseId}/report"
         );
     }
+
+    public static function discussionQuestionAdded(int $instructorId, string $userName, string $courseTitle, string $questionTitle, int $courseId): void
+    {
+        self::send(
+            $instructorId,
+            'discussion',
+            'New discussion question',
+            "{$userName} asked \"{$questionTitle}\" in \"{$courseTitle}\"",
+            "/courses/{$courseId}?tab=discussions"
+        );
+    }
+
+    public static function discussionReplyAdded(int $userId, string $userName, string $questionTitle, int $courseId): void
+    {
+        self::send(
+            $userId,
+            'discussion',
+            'New reply to question',
+            "{$userName} replied to \"{$questionTitle}\"",
+            "/courses/{$courseId}?tab=discussions"
+        );
+    }
+
+    public static function discussionReplyPinned(int $userId, string $questionTitle, int $courseId): void
+    {
+        self::send(
+            $userId,
+            'discussion',
+            'Answer pinned',
+            "The instructor pinned your reply in \"{$questionTitle}\"",
+            "/courses/{$courseId}?tab=discussions"
+        );
+    }
+
+    public static function discussionReplyAccepted(int $userId, string $questionTitle, int $courseId): void
+    {
+        self::send(
+            $userId,
+            'discussion',
+            'Answer accepted',
+            "The instructor marked your reply as the accepted answer in \"{$questionTitle}\"",
+            "/courses/{$courseId}?tab=discussions"
+        );
+    }
+
+    public static function discussionReplyLiked(int $userId, string $likerName, string $questionTitle, int $courseId): void
+    {
+        self::send(
+            $userId,
+            'discussion',
+            'Someone liked your reply',
+            "{$likerName} liked your reply in \"{$questionTitle}\"",
+            "/courses/{$courseId}?tab=discussions"
+        );
+    }
 }
