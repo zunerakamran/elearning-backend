@@ -16,15 +16,26 @@ class Course extends Model
         'thumbnail',
         'level',
         'published',
+        'approval_status',
+        'featured',
+        'price',
+        'rejection_reason',
+        'category_id',
     ];
 
     protected $casts = [
         'published' => 'boolean',
+        'featured'  => 'boolean',
     ];
 
     public function instructor()
     {
         return $this->belongsTo(User::class, 'instructor_id');
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 
     public function modules()

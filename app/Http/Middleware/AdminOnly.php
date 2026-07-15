@@ -5,13 +5,13 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-class InstructorOnly
+class AdminOnly
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!$request->user() || !in_array($request->user()->role, ['instructor', 'admin'])) {
+        if (!$request->user() || $request->user()->role !== 'admin') {
             return response()->json([
-                'message' => 'Only instructors can perform this action.'
+                'message' => 'Only administrators can perform this action.'
             ], 403);
         }
 

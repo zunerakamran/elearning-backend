@@ -50,7 +50,7 @@ class NotificationService
         self::send(
             $studentId,
             'certificate',
-            'Certificate issued 🎓',
+            'Certificate issued',
             "You have been awarded a certificate for \"{$courseTitle}\"",
             '/my-certificates'
         );

@@ -10,8 +10,9 @@ class CourseController extends Controller
     // List all published courses (public)
     public function index()
     {
-        $courses = Course::with('instructor:id,name')
+        $courses = Course::with('instructor:id,name', 'category')
             ->where('published', true)
+            ->where('approval_status', 'approved')
             ->latest()
             ->get();
 
@@ -37,7 +38,8 @@ class CourseController extends Controller
 
         $course = Course::create([
             ...$validated,
-            'instructor_id' => $request->user()->id,
+            'instructor_id'   => $request->user()->id,
+            'approval_status' => 'pending',
         ]);
 
         return response()->json($course, 201);

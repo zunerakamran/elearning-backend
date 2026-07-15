@@ -121,23 +121,33 @@ class AuthController extends Controller
         }
 
         // Create the user
+        $role = $registrationData['role'];
         $user = User::create([
-            'name' => $registrationData['name'],
-            'email' => $registrationData['email'],
-            'password' => Hash::make($registrationData['password']),
-            'role' => $registrationData['role'],
-            'email_verified_at' => now(),
+            'name'               => $registrationData['name'],
+            'email'              => $registrationData['email'],
+            'password'           => Hash::make($registrationData['password']),
+            'role'               => $role,
+            'email_verified_at'  => now(),
+            'instructor_status'  => $role === 'instructor' ? 'pending' : null,
         ]);
 
         // Clear cache
         \Illuminate\Support\Facades\Cache::forget($cacheKey);
 
-        // Auto-login
+        // If instructor, do NOT auto-login — they must wait for admin approval
+        if ($role === 'instructor') {
+            return response()->json([
+                'message'             => 'Registration completed. Your account is pending admin approval.',
+                'instructor_pending'  => true,
+            ], 201);
+        }
+
+        // Auto-login for students
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
-            'token' => $token,
+            'user'    => $user,
+            'token'   => $token,
             'message' => 'Registration completed successfully.',
         ], 201);
     }
@@ -145,7 +155,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email'],
+            'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
 
@@ -157,10 +167,26 @@ class AuthController extends Controller
             ]);
         }
 
+        // Block pending instructors from logging in
+        if ($user->role === 'instructor' && $user->instructor_status === 'pending') {
+            return response()->json([
+                'message'            => 'Your instructor account is pending admin approval. You will be notified once approved.',
+                'instructor_pending' => true,
+            ], 403);
+        }
+
+        // Block rejected instructors
+        if ($user->role === 'instructor' && $user->instructor_status === 'rejected') {
+            return response()->json([
+                'message'              => 'Your instructor application was rejected. Please contact support.',
+                'instructor_rejected'  => true,
+            ], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user'  => $user,
             'token' => $token,
         ]);
     }

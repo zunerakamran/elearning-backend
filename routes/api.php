@@ -18,6 +18,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\DiscussionController;
+use App\Http\Controllers\AdminController;
 
 // ── Public routes ─────────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ Route::get('/courses/{course}/assignments', [AssignmentController::class, 'index
 Route::get('/courses/{course}/assignments/{assignment}', [AssignmentController::class, 'show']);
 Route::get('/certificates/{certificateNumber}/verify', [CertificateController::class, 'verify']);
 Route::get('/courses/{course}/reviews', [ReviewController::class, 'index']);
+Route::get('/categories', [AdminController::class, 'getCategories']);
 
 
 // ── Authenticated routes (any logged-in user) ─────────────────────────────────
@@ -163,4 +165,39 @@ Route::middleware(['auth:sanctum', 'instructor'])->group(function () {
     Route::post('/courses/{course}/certificates', [CertificateController::class, 'issue']);
     Route::delete('/courses/{course}/certificates/{certificate}', [CertificateController::class, 'revoke']);
     Route::get('/courses/{course}/certificates', [CertificateController::class, 'coursesCertificates']);
+});
+
+// ── Admin only routes ─────────────────────────────────────────────────────────
+
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+
+    // Dashboard
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+
+    // User Management
+    Route::get('/users', [AdminController::class, 'getUsers']);
+    Route::put('/users/{user}', [AdminController::class, 'updateUser']);
+    Route::post('/users/{user}/suspend', [AdminController::class, 'suspendUser']);
+    Route::post('/users/{user}/ban', [AdminController::class, 'banUser']);
+    Route::post('/users/{user}/activate', [AdminController::class, 'activateUser']);
+    Route::delete('/users/{user}', [AdminController::class, 'deleteUser']);
+
+    // Instructor Management
+    Route::get('/instructors', [AdminController::class, 'getPendingInstructors']);
+    Route::post('/instructors/{user}/approve', [AdminController::class, 'approveInstructor']);
+    Route::post('/instructors/{user}/reject', [AdminController::class, 'rejectInstructor']);
+    Route::post('/instructors/{user}/verify', [AdminController::class, 'verifyInstructor']);
+
+    // Course Moderation
+    Route::get('/courses', [AdminController::class, 'getCourses']);
+    Route::post('/courses/{course}/approve', [AdminController::class, 'approveCourse']);
+    Route::post('/courses/{course}/reject', [AdminController::class, 'rejectCourse']);
+    Route::post('/courses/{course}/feature', [AdminController::class, 'featureCourse']);
+    Route::delete('/courses/{course}', [AdminController::class, 'removeCourse']);
+
+    // Categories
+    Route::get('/categories', [AdminController::class, 'getCategories']);
+    Route::post('/categories', [AdminController::class, 'storeCategory']);
+    Route::put('/categories/{category}', [AdminController::class, 'updateCategory']);
+    Route::delete('/categories/{category}', [AdminController::class, 'destroyCategory']);
 });
