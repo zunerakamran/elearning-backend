@@ -98,7 +98,7 @@ class AssignmentSubmissionController extends Controller
     // Instructor views all submissions for an assignment
     public function index(Request $request, Assignment $assignment)
     {
-        if ($assignment->instructor_id !== $request->user()->id) {
+        if ($assignment->instructor_id !== $request->user()->id && $request->user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

@@ -38,7 +38,7 @@ class ChatController extends Controller
         return response()->json($conversation->load([
             'course:id,title',
             'student:id,name,profile_picture',
-            'instructor:id,name,profile_picture',
+            'instructor:id,name,profile_picture,is_verified',
         ]));
     }
 
@@ -131,7 +131,7 @@ class ChatController extends Controller
         $conversations = Conversation::where('student_id', $user->id)
             ->with([
                 'course:id,title',
-                'instructor:id,name,profile_picture',
+                'instructor:id,name,profile_picture,is_verified',
                 'lastMessage',
             ])
             ->orderByDesc('last_message_at')

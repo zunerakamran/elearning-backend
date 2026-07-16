@@ -22,9 +22,10 @@ class QuizController extends Controller
 
         $course = $lesson->module->course;
         $isInstructor = $request->user() && $course->instructor_id === $request->user()->id;
+        $isAdmin = $request->user() && $request->user()->role === 'admin';
 
-        // Hide is_correct from students only
-        if (!$isInstructor) {
+        // Hide is_correct from students only (instructors and admins can see correct answers)
+        if (!$isInstructor && !$isAdmin) {
             $quiz->questions->each(function ($question) {
                 // Hide is_correct for MCQ answers
                 $question->answers->each(function ($answer) {
@@ -64,6 +65,8 @@ class QuizController extends Controller
             'questions.*.answers.*.answer_text' => ['required', 'string'],
             'questions.*.answers.*.is_correct' => ['required', 'boolean'],
         ]);
+
+        $module = $lesson->module;
 
         $quiz = Quiz::create([
             'lesson_id' => $lesson->id,
@@ -128,6 +131,7 @@ class QuizController extends Controller
                     $student->id,
                     $quiz->title,
                     $course->title,
+                    $module->id,
                     $lesson->id
                 );
             } catch (\Exception $e) {
@@ -163,6 +167,35 @@ class QuizController extends Controller
                     'score' => $attempt->score,
                     'passed' => $attempt->passed,
                     'created_at' => $attempt->created_at ? $attempt->created_at->format('Y-m-d\TH:i:s\Z') : null,
+                ];
+            });
+
+        return response()->json($attempts);
+    }
+
+    // Get all attempts for a quiz (admin only)
+    public function adminAttempts(Request $request, Quiz $quiz)
+    {
+        $attempts = QuizAttempt::where('quiz_id', $quiz->id)
+            ->with('user:id,name,email')
+            ->latest()
+            ->get()
+            ->map(function ($attempt) {
+                return [
+                    'id'         => $attempt->id,
+                    'quiz_id'    => $attempt->quiz_id,
+                    'user'       => [
+                        'id'    => $attempt->user->id,
+                        'name'  => $attempt->user->name,
+                        'email' => $attempt->user->email,
+                    ],
+                    'score'      => $attempt->score,
+                    'passed'     => $attempt->passed,
+                    'correct'    => $attempt->correct,
+                    'total'      => $attempt->total,
+                    'created_at' => $attempt->created_at
+                        ? $attempt->created_at->format('Y-m-d\TH:i:s\Z')
+                        : null,
                 ];
             });
 

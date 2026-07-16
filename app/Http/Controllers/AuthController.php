@@ -136,6 +136,21 @@ class AuthController extends Controller
 
         // If instructor, do NOT auto-login — they must wait for admin approval
         if ($role === 'instructor') {
+            // Notify admins
+            \App\Services\NotificationService::newInstructorPendingApproval($user->name);
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/admin/instructors';
+            foreach ($admins as $admin) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($admin->email)->send(
+                        new \App\Mail\NewInstructorAwaitingApprovalMail($user->name, $user->email, $actionUrl)
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Failed sending admin notification email: " . $admin->email . ". Error: " . $e->getMessage());
+                }
+            }
+
             return response()->json([
                 'message'             => 'Registration completed. Your account is pending admin approval.',
                 'instructor_pending'  => true,
@@ -167,19 +182,40 @@ class AuthController extends Controller
             ]);
         }
 
-        // Block pending instructors from logging in
-        if ($user->role === 'instructor' && $user->instructor_status === 'pending') {
+        // Block suspended users
+        if ($user->status === 'suspended') {
             return response()->json([
-                'message'            => 'Your instructor account is pending admin approval. You will be notified once approved.',
-                'instructor_pending' => true,
+                'message' => 'Your account has been suspended. Please contact support.',
+                'account_suspended' => true,
             ], 403);
         }
 
-        // Block rejected instructors
-        if ($user->role === 'instructor' && $user->instructor_status === 'rejected') {
+        // Block banned users
+        if ($user->status === 'banned') {
             return response()->json([
-                'message'              => 'Your instructor application was rejected. Please contact support.',
-                'instructor_rejected'  => true,
+                'message' => 'Your account has been banned.',
+                'account_banned' => true,
+            ], 403);
+        }
+
+        // Block instructors who are not approved
+        if ($user->role === 'instructor' && $user->instructor_status !== 'approved') {
+            if ($user->instructor_status === 'pending') {
+                return response()->json([
+                    'message'            => 'Your instructor account is pending admin approval. You will be notified once approved.',
+                    'instructor_pending' => true,
+                ], 403);
+            }
+            if ($user->instructor_status === 'rejected') {
+                return response()->json([
+                    'message'              => 'Your instructor application was rejected. Please contact support.',
+                    'instructor_rejected'  => true,
+                ], 403);
+            }
+            // Block any other non-approved status
+            return response()->json([
+                'message' => 'Your instructor account is not approved. Please contact support.',
+                'instructor_not_approved' => true,
             ], 403);
         }
 

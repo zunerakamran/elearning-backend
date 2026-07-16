@@ -47,7 +47,7 @@ class AdminController extends Controller
 
         // Top courses by enrollments
         $topCourses = Course::withCount('enrollments')
-            ->with('instructor:id,name')
+            ->with('instructor:id,name,is_verified')
             ->orderByDesc('enrollments_count')
             ->limit(5)
             ->get();
@@ -122,6 +122,18 @@ class AdminController extends Controller
 
         $user->update(['status' => 'suspended']);
 
+        // Send notifications & email
+        \App\Services\NotificationService::userStatusUpdated($user->id, 'suspended');
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/login';
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\UserStatusMail($user->name, 'suspended', $actionUrl)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending user status email to: " . $user->email . ". Error: " . $e->getMessage());
+        }
+
         return response()->json(['message' => 'User suspended successfully.']);
     }
 
@@ -133,12 +145,36 @@ class AdminController extends Controller
 
         $user->update(['status' => 'banned']);
 
+        // Send notifications & email
+        \App\Services\NotificationService::userStatusUpdated($user->id, 'banned');
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/login';
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\UserStatusMail($user->name, 'banned', $actionUrl)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending user status email to: " . $user->email . ". Error: " . $e->getMessage());
+        }
+
         return response()->json(['message' => 'User banned successfully.']);
     }
 
     public function activateUser(User $user)
     {
         $user->update(['status' => 'active']);
+
+        // Send notifications & email
+        \App\Services\NotificationService::userStatusUpdated($user->id, 'active');
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/login';
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\UserStatusMail($user->name, 'active', $actionUrl)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending user status email to: " . $user->email . ". Error: " . $e->getMessage());
+        }
 
         return response()->json(['message' => 'User activated successfully.']);
     }
@@ -181,6 +217,18 @@ class AdminController extends Controller
 
         $user->update(['instructor_status' => 'approved']);
 
+        // Send notifications & email
+        \App\Services\NotificationService::instructorStatusUpdated($user->id, 'approved');
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/instructor/dashboard';
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\InstructorStatusMail($user->name, 'approved', $actionUrl)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending instructor status email to: " . $user->email . ". Error: " . $e->getMessage());
+        }
+
         return response()->json(['message' => 'Instructor approved successfully.']);
     }
 
@@ -191,6 +239,18 @@ class AdminController extends Controller
         }
 
         $user->update(['instructor_status' => 'rejected']);
+
+        // Send notifications & email
+        \App\Services\NotificationService::instructorStatusUpdated($user->id, 'rejected');
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/profile';
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\InstructorStatusMail($user->name, 'rejected', $actionUrl)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending instructor status email to: " . $user->email . ". Error: " . $e->getMessage());
+        }
 
         return response()->json(['message' => 'Instructor rejected successfully.']);
     }
@@ -203,6 +263,18 @@ class AdminController extends Controller
 
         $user->update(['is_verified' => true]);
 
+        // Send notifications & email
+        \App\Services\NotificationService::instructorStatusUpdated($user->id, 'verified');
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/profile';
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\InstructorStatusMail($user->name, 'verified', $actionUrl)
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed sending instructor status email to: " . $user->email . ". Error: " . $e->getMessage());
+        }
+
         return response()->json(['message' => 'Instructor verified successfully.']);
     }
 
@@ -210,7 +282,7 @@ class AdminController extends Controller
 
     public function getCourses(Request $request)
     {
-        $query = Course::with('instructor:id,name', 'category')
+        $query = Course::with('instructor:id,name,is_verified', 'category')
             ->withCount('enrollments');
 
         if ($request->filled('approval_status')) {
@@ -237,7 +309,22 @@ class AdminController extends Controller
 
     public function approveCourse(Course $course)
     {
-        $course->update(['approval_status' => 'approved', 'published' => true]);
+        $course->update(['approval_status' => 'approved', 'published' => true, 'rejection_reason' => null]);
+
+        // Send notifications & email
+        \App\Services\NotificationService::courseStatusUpdated($course->instructor_id, $course->title, 'approved', $course->id);
+        $instructor = $course->instructor;
+        if ($instructor) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/courses/' . $course->id;
+            try {
+                \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                    new \App\Mail\CourseStatusMail($instructor->name, $course->title, 'approved', null, $actionUrl)
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending course status email to: " . $instructor->email . ". Error: " . $e->getMessage());
+            }
+        }
 
         return response()->json(['message' => 'Course approved and published successfully.']);
     }
@@ -248,11 +335,28 @@ class AdminController extends Controller
             'reason' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $reason = $validated['reason'] ?? null;
+
         $course->update([
             'approval_status'  => 'rejected',
             'published'        => false,
-            'rejection_reason' => $validated['reason'] ?? null,
+            'rejection_reason' => $reason,
         ]);
+
+        // Send notifications & email
+        \App\Services\NotificationService::courseStatusUpdated($course->instructor_id, $course->title, 'rejected', $course->id, $reason);
+        $instructor = $course->instructor;
+        if ($instructor) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/instructor/dashboard';
+            try {
+                \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                    new \App\Mail\CourseStatusMail($instructor->name, $course->title, 'rejected', $reason, $actionUrl)
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending course status email to: " . $instructor->email . ". Error: " . $e->getMessage());
+            }
+        }
 
         return response()->json(['message' => 'Course rejected successfully.']);
     }
@@ -262,6 +366,21 @@ class AdminController extends Controller
         $course->update(['featured' => !$course->featured]);
 
         $status = $course->featured ? 'featured' : 'unfeatured';
+
+        // Send notifications & email
+        \App\Services\NotificationService::courseStatusUpdated($course->instructor_id, $course->title, $status, $course->id);
+        $instructor = $course->instructor;
+        if ($instructor) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            $actionUrl = $frontendUrl . '/courses/' . $course->id;
+            try {
+                \Illuminate\Support\Facades\Mail::to($instructor->email)->send(
+                    new \App\Mail\CourseStatusMail($instructor->name, $course->title, $status, null, $actionUrl)
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending course status email to: " . $instructor->email . ". Error: " . $e->getMessage());
+            }
+        }
 
         return response()->json(['message' => "Course {$status} successfully.", 'featured' => $course->featured]);
     }

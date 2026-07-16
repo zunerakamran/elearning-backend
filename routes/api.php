@@ -195,6 +195,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/courses/{course}/feature', [AdminController::class, 'featureCourse']);
     Route::delete('/courses/{course}', [AdminController::class, 'removeCourse']);
 
+    // Quiz Attempts (admin view)
+    Route::get('/quizzes/{quiz}/attempts', [QuizController::class, 'adminAttempts']);
+
     // Categories
     Route::get('/categories', [AdminController::class, 'getCategories']);
     Route::post('/categories', [AdminController::class, 'storeCategory']);

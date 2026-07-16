@@ -13,7 +13,7 @@ class AnnouncementController extends Controller
     public function index(Course $course)
     {
         $announcements = $course->announcements()
-                                ->with('instructor:id,name')
+                                ->with('instructor:id,name,is_verified')
                                 ->get();
 
         return response()->json($announcements);
@@ -72,7 +72,7 @@ class AnnouncementController extends Controller
             }
         }
 
-        return response()->json($announcement->load('instructor:id,name'), 201);
+        return response()->json($announcement->load('instructor:id,name,is_verified'), 201);
     }
 
     // Update announcement (instructor only)

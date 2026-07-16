@@ -135,14 +135,14 @@ class NotificationService
         );
     }
 
-    public static function quizAdded(int $studentId, string $quizTitle, string $courseTitle, int $lessonId): void
+    public static function quizAdded(int $studentId, string $quizTitle, string $courseTitle, int $moduleId, int $lessonId): void
     {
         self::send(
             $studentId,
             'quiz',
             'New quiz available',
             "A new quiz \"{$quizTitle}\" has been added to a lesson in \"{$courseTitle}\"",
-            "/lessons/{$lessonId}/quiz"
+            "/modules/{$moduleId}/lessons/{$lessonId}"
         );
     }
 
@@ -220,6 +220,80 @@ class NotificationService
             'Someone liked your reply',
             "{$likerName} liked your reply in \"{$questionTitle}\"",
             "/courses/{$courseId}?tab=discussions"
+        );
+    }
+
+    public static function notifyAdmins(string $type, string $title, string $body, ?string $link = null): void
+    {
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            self::send($admin->id, $type, $title, $body, $link);
+        }
+    }
+
+    public static function newInstructorPendingApproval(string $instructorName): void
+    {
+        self::notifyAdmins(
+            'new_instructor',
+            'New Instructor Approval Required',
+            "Instructor \"{$instructorName}\" has registered and is awaiting approval.",
+            '/admin/instructors'
+        );
+    }
+
+    public static function newCoursePendingApproval(string $courseTitle): void
+    {
+        self::notifyAdmins(
+            'new_course',
+            'New Course Approval Required',
+            "Course \"{$courseTitle}\" has been submitted and is awaiting approval.",
+            '/admin/courses'
+        );
+    }
+
+    public static function instructorStatusUpdated(int $instructorId, string $status): void
+    {
+        $statusText = $status === 'approved' ? 'approved' : ($status === 'rejected' ? 'rejected' : 'verified');
+        self::send(
+            $instructorId,
+            'instructor_approval',
+            "Instructor Application Update",
+            "Your instructor application has been {$statusText}.",
+            $status === 'approved' ? '/instructor/dashboard' : null
+        );
+    }
+
+    public static function userStatusUpdated(int $userId, string $status): void
+    {
+        self::send(
+            $userId,
+            'user_status',
+            "Account Status Update",
+            "Your account status has been updated to: {$status}.",
+            null
+        );
+    }
+
+    public static function courseStatusUpdated(int $instructorId, string $courseTitle, string $status, int $courseId, ?string $reason = null): void
+    {
+        $statusText = $status;
+        if ($status === 'approved') {
+            $statusText = 'approved and published';
+        } elseif ($status === 'rejected') {
+            $statusText = 'rejected';
+        }
+
+        $body = "Your course \"{$courseTitle}\" has been {$statusText}.";
+        if ($status === 'rejected' && $reason) {
+            $body .= " Reason: " . \Illuminate\Support\Str::limit($reason, 50);
+        }
+
+        self::send(
+            $instructorId,
+            'course_approval',
+            "Course Status Update: {$courseTitle}",
+            $body,
+            $status === 'approved' ? "/courses/{$courseId}" : "/instructor/dashboard"
         );
     }
 }

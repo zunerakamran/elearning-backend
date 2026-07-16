@@ -13,7 +13,7 @@ class AssignmentController extends Controller
     public function index(Request $request, Course $course)
     {
         $assignments = $course->assignments()
-                              ->with('instructor:id,name')
+                              ->with('instructor:id,name,is_verified')
                               ->get();
 
         // Attach student's own submission to each assignment
@@ -31,7 +31,7 @@ class AssignmentController extends Controller
     // Get single assignment
     public function show(Request $request, Course $course, Assignment $assignment)
     {
-        $assignment->load('instructor:id,name');
+        $assignment->load('instructor:id,name,is_verified');
 
         if ($request->user()?->role === 'student') {
             $assignment->my_submission = $assignment->submissions()
@@ -101,7 +101,7 @@ class AssignmentController extends Controller
             }
         }
 
-        return response()->json($assignment->load('instructor:id,name'), 201);
+        return response()->json($assignment->load('instructor:id,name,is_verified'), 201);
     }
 
     // Update assignment (instructor only)

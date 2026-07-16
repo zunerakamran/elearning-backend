@@ -10,7 +10,7 @@ class CourseController extends Controller
     // List all published courses (public)
     public function index()
     {
-        $courses = Course::with('instructor:id,name', 'category')
+        $courses = Course::with('instructor:id,name,is_verified', 'category')
             ->where('published', true)
             ->where('approval_status', 'approved')
             ->latest()
@@ -22,7 +22,7 @@ class CourseController extends Controller
     // View a single course (public)
     public function show(Course $course)
     {
-        $course->load('instructor:id,name');
+        $course->load('instructor:id,name,is_verified');
         return response()->json($course);
     }
 
@@ -41,6 +41,21 @@ class CourseController extends Controller
             'instructor_id'   => $request->user()->id,
             'approval_status' => 'pending',
         ]);
+
+        // Notify admins
+        \App\Services\NotificationService::newCoursePendingApproval($course->title);
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $actionUrl = $frontendUrl . '/admin/courses';
+        foreach ($admins as $admin) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($admin->email)->send(
+                    new \App\Mail\NewCourseAwaitingApprovalMail($course->title, $course->description, $request->user()->name, $actionUrl)
+                );
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed sending course creation admin email: " . $admin->email . ". Error: " . $e->getMessage());
+            }
+        }
 
         return response()->json($course, 201);
     }

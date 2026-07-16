@@ -98,7 +98,7 @@ class EnrollmentController extends Controller
     {
         $courses = $request->user()
                            ->enrolledCourses()
-                           ->with('instructor:id,name')
+                           ->with('instructor:id,name,is_verified')
                            ->latest('enrollments.enrolled_at')
                            ->get();
 
