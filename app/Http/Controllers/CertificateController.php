@@ -118,4 +118,28 @@ class CertificateController extends Controller
 
         return response()->json($certificate);
     }
+
+    // Admin: get all certificates across all courses
+    public function adminCertificates()
+    {
+        $certificates = Certificate::with([
+            'student:id,name,email',
+            'course:id,title,level,category_id,instructor_id',
+            'course.category:id,name',
+            'course.instructor:id,name,is_verified',
+            'issuedBy:id,name,is_verified',
+        ])
+            ->latest()
+            ->get();
+
+        // Fallback: if issued_by is null or issuedBy not loaded, use course instructor
+        $certificates->transform(function ($cert) {
+            if (!$cert->issuedBy && $cert->course && $cert->course->instructor) {
+                $cert->issuedBy = $cert->course->instructor;
+            }
+            return $cert;
+        });
+
+        return response()->json($certificates);
+    }
 }

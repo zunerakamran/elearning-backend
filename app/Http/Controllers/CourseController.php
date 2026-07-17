@@ -30,10 +30,11 @@ class CourseController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
+            'title'       => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'level' => ['nullable', 'in:beginner,intermediate,advanced'],
-            'published' => ['nullable', 'boolean'],
+            'level'       => ['nullable', 'in:beginner,intermediate,advanced'],
+            'published'   => ['nullable', 'boolean'],
+            'category_id' => ['required', 'exists:categories,id'],
         ]);
 
         $course = Course::create([
@@ -68,10 +69,11 @@ class CourseController extends Controller
         }
 
         $validated = $request->validate([
-            'title' => ['sometimes', 'string', 'max:255'],
+            'title'       => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'level' => ['nullable', 'in:beginner,intermediate,advanced'],
-            'published' => ['nullable', 'boolean'],
+            'level'       => ['nullable', 'in:beginner,intermediate,advanced'],
+            'published'   => ['nullable', 'boolean'],
+            'category_id' => ['required', 'exists:categories,id'],
         ]);
 
         $course->update($validated);
@@ -95,6 +97,7 @@ class CourseController extends Controller
     public function myCourses(Request $request)
     {
         $courses = Course::where('instructor_id', $request->user()->id)
+            ->with('category')
             ->withCount('enrollments')
             ->latest()
             ->get();

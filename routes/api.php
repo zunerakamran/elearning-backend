@@ -174,6 +174,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
 
+    // Certificates
+    Route::get('/certificates', [CertificateController::class, 'adminCertificates']);
+
     // User Management
     Route::get('/users', [AdminController::class, 'getUsers']);
     Route::put('/users/{user}', [AdminController::class, 'updateUser']);
