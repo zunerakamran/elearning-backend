@@ -201,4 +201,21 @@ class QuizController extends Controller
 
         return response()->json($attempts);
     }
+
+    // Get detailed result for a specific attempt (instructor/admin)
+public function attemptDetail(Request $request, QuizAttempt $attempt)
+{
+    $quiz = $attempt->quiz()->with('questions.answers')->first();
+    $course = $quiz->lesson->module->course;
+
+    // Only instructor of the course or admin can view
+    if ($request->user()->role !== 'admin' && $course->instructor_id !== $request->user()->id) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    return response()->json([
+        'attempt' => $attempt->load('user:id,name,email'),
+        'quiz' => $quiz,
+    ]);
+}
 }

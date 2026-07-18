@@ -41,7 +41,7 @@ class CertificateController extends Controller
         if ($existing) {
             return response()->json([
                 'message' => 'Certificate already issued to this student.',
-                'certificate' => $existing->load(['student:id,name,email', 'course:id,title', 'issuedBy:id,name']),
+                'certificate' => $existing->load(['student:id,name,email', 'course:id,title,level,category_id', 'course.category:id,name', 'issuedBy:id,name,is_verified']),
             ], 409);
         }
 
@@ -60,7 +60,7 @@ class CertificateController extends Controller
         );
 
         return response()->json(
-            $certificate->load(['student:id,name,email', 'course:id,title', 'issuedBy:id,name']),
+            $certificate->load(['student:id,name,email', 'course:id,title,level,category_id', 'course.category:id,name', 'issuedBy:id,name,is_verified']),
             201
         );
     }
@@ -86,7 +86,7 @@ class CertificateController extends Controller
         $certificates = Certificate::where('course_id', $course->id)
             ->with([
                 'student:id,name,email',
-                'issuedBy:id,name',  
+                'issuedBy:id,name,is_verified',  
             ])
             ->latest()
             ->get();
@@ -99,8 +99,9 @@ class CertificateController extends Controller
     {
         $certificates = Certificate::where('student_id', $request->user()->id)
             ->with([
-                'course:id,title,level',
-                'issuedBy:id,name', 
+                'course:id,title,level,category_id',
+                'course.category:id,name',
+                'issuedBy:id,name,is_verified', 
                 'student:id,name',
             ])
             ->latest()
@@ -113,7 +114,7 @@ class CertificateController extends Controller
     public function verify($certificateNumber)
     {
         $certificate = Certificate::where('certificate_number', $certificateNumber)
-            ->with(['student:id,name', 'course:id,title', 'issuedBy:id,name'])
+            ->with(['student:id,name', 'course:id,title,level,category_id', 'course.category:id,name', 'issuedBy:id,name,is_verified'])
             ->firstOrFail();
 
         return response()->json($certificate);

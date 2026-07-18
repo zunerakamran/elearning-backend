@@ -119,6 +119,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/discussions/replies/{reply}/pin', [DiscussionController::class, 'togglePin']);
     Route::post('/discussions/replies/{reply}/accept', [DiscussionController::class, 'toggleAccept']);
 
+    Route::get('/quiz-attempts/{attempt}', [QuizController::class, 'attemptDetail']);
+
 });
 
 // ── Instructor only routes ────────────────────────────────────────────────────
@@ -165,6 +167,8 @@ Route::middleware(['auth:sanctum', 'instructor'])->group(function () {
     Route::post('/courses/{course}/certificates', [CertificateController::class, 'issue']);
     Route::delete('/courses/{course}/certificates/{certificate}', [CertificateController::class, 'revoke']);
     Route::get('/courses/{course}/certificates', [CertificateController::class, 'coursesCertificates']);
+
+    Route::get('/quizzes/{quiz}/attempts', [QuizController::class, 'adminAttempts']);
 });
 
 // ── Admin only routes ─────────────────────────────────────────────────────────
